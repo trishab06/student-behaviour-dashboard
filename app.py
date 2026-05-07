@@ -1,211 +1,333 @@
+# ======================================================
+# DADV MINI PROJECT
+# Student Behaviour Analysis Dashboard
+# ======================================================
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+from fpdf import FPDF
 
-# -----------------------------
+# ======================================================
 # PAGE CONFIGURATION
-# -----------------------------
-st.set_page_config(page_title="Student Behaviour Dashboard", layout="wide")
+# ======================================================
+st.set_page_config(
+    page_title="Student Behaviour Dashboard",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# -----------------------------
-# TITLE
-# -----------------------------
-st.title("📊 Student Behaviour Analysis Dashboard")
-st.markdown("### Analyzing Behavioural Patterns and Their Impact on Students")
+# ======================================================
+# CUSTOM CSS (DARK THEME)
+# ======================================================
+st.markdown(
+    """
+    <style>
+    .main {
+        background-color: #0e1117;
+        color: white;
+    }
+    .stMetric {
+        background-color: #1c1f26;
+        padding: 15px;
+        border-radius: 10px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# -----------------------------
+# ======================================================
+# SIDEBAR NAVIGATION
+# ======================================================
+st.sidebar.title("📚 Navigation")
+page = st.sidebar.radio(
+    "Go To",
+    [
+        "Dashboard",
+        "Data Analysis",
+        "Machine Learning Prediction",
+        "Generate Report",
+        "About Project"
+    ]
+)
+
+# ======================================================
 # LOAD DATASET
-# -----------------------------
+# ======================================================
 df = pd.read_csv("student_lifestyle_performance_dataset.csv")
 
-# -----------------------------
-# SIDEBAR FILTERS
-# -----------------------------
-st.sidebar.header("Filters")
+# ======================================================
+# DASHBOARD PAGE
+# ======================================================
+if page == "Dashboard":
 
-branch_filter = st.sidebar.multiselect(
-    "Select Branch",
-    options=df['Branch'].unique(),
-    default=df['Branch'].unique()
-)
+    st.title("📊 Student Behaviour Analysis Dashboard")
+    st.markdown("### Analyzing Behavioural Patterns and Their Impact on Students")
 
-residence_filter = st.sidebar.multiselect(
-    "Select Residence",
-    options=df['Residence'].unique(),
-    default=df['Residence'].unique()
-)
+    # --------------------------------------------------
+    # FILTERS
+    # --------------------------------------------------
+    st.sidebar.header("Filters")
 
-# Apply filters
-filtered_df = df[
-    (df['Branch'].isin(branch_filter)) &
-    (df['Residence'].isin(residence_filter))
-]
+    branch_filter = st.sidebar.multiselect(
+        "Select Branch",
+        df['Branch'].unique(),
+        default=df['Branch'].unique()
+    )
 
-# -----------------------------
-# KPI CARDS
-# -----------------------------
-avg_cgpa = round(filtered_df['CGPA'].mean(), 2)
-avg_study = round(filtered_df['Study_Hours_per_Day'].mean(), 2)
-avg_sleep = round(filtered_df['Sleep_Hours'].mean(), 2)
-avg_attendance = round(filtered_df['Attendance_Percentage'].mean(), 2)
-avg_stress = round(filtered_df['Stress_Level_1_to_10'].mean(), 2)
+    residence_filter = st.sidebar.multiselect(
+        "Select Residence",
+        df['Residence'].unique(),
+        default=df['Residence'].unique()
+    )
 
-col1, col2, col3, col4, col5 = st.columns(5)
+    filtered_df = df[
+        (df['Branch'].isin(branch_filter)) &
+        (df['Residence'].isin(residence_filter))
+    ]
 
-col1.metric("Average CGPA", avg_cgpa)
-col2.metric("Study Hours", avg_study)
-col3.metric("Sleep Hours", avg_sleep)
-col4.metric("Attendance %", avg_attendance)
-col5.metric("Stress Level", avg_stress)
+    # --------------------------------------------------
+    # KPI CARDS
+    # --------------------------------------------------
+    avg_cgpa = round(filtered_df['CGPA'].mean(), 2)
+    avg_study = round(filtered_df['Study_Hours_per_Day'].mean(), 2)
+    avg_sleep = round(filtered_df['Sleep_Hours'].mean(), 2)
+    avg_attendance = round(filtered_df['Attendance_Percentage'].mean(), 2)
+    avg_stress = round(filtered_df['Stress_Level_1_to_10'].mean(), 2)
 
-st.markdown("---")
+    col1, col2, col3, col4, col5 = st.columns(5)
 
-# -----------------------------
-# CHART 1 - STUDY HOURS VS CGPA
-# -----------------------------
-st.subheader("Study Hours vs CGPA")
+    col1.metric("CGPA", avg_cgpa)
+    col2.metric("Study Hours", avg_study)
+    col3.metric("Sleep Hours", avg_sleep)
+    col4.metric("Attendance", avg_attendance)
+    col5.metric("Stress", avg_stress)
 
-fig1 = px.scatter(
-    filtered_df,
-    x='Study_Hours_per_Day',
-    y='CGPA',
-    color='Branch',
-    size='Attendance_Percentage',
-    hover_data=['Residence'],
-    title='Relationship Between Study Hours and CGPA'
-)
+    st.markdown("---")
 
-st.plotly_chart(fig1, use_container_width=True)
+    # --------------------------------------------------
+    # CHARTS
+    # --------------------------------------------------
 
-# -----------------------------
-# CHART 2 - SCREEN TIME VS CGPA
-# -----------------------------
-st.subheader("Screen Time vs CGPA")
+    # Study Hours vs CGPA
+    fig1 = px.scatter(
+        filtered_df,
+        x='Study_Hours_per_Day',
+        y='CGPA',
+        color='Branch',
+        size='Attendance_Percentage',
+        title='Study Hours vs CGPA'
+    )
 
-fig2 = px.scatter(
-    filtered_df,
-    x='Screen_Time_Hours',
-    y='CGPA',
-    color='Stress_Level_1_to_10',
-    title='Impact of Screen Time on CGPA'
-)
+    st.plotly_chart(fig1, use_container_width=True)
 
-st.plotly_chart(fig2, use_container_width=True)
+    # Screen Time vs CGPA
+    fig2 = px.scatter(
+        filtered_df,
+        x='Screen_Time_Hours',
+        y='CGPA',
+        color='Stress_Level_1_to_10',
+        title='Screen Time vs CGPA'
+    )
 
-# -----------------------------
-# CHART 3 - BRANCH WISE CGPA
-# -----------------------------
-st.subheader("Branch-wise Average CGPA")
+    st.plotly_chart(fig2, use_container_width=True)
 
-branch_avg = filtered_df.groupby('Branch')['CGPA'].mean().reset_index()
+    # Branch-wise CGPA
+    branch_avg = filtered_df.groupby('Branch')['CGPA'].mean().reset_index()
 
-fig3 = px.bar(
-    branch_avg,
-    x='Branch',
-    y='CGPA',
-    text_auto=True,
-    title='Average CGPA by Branch'
-)
+    fig3 = px.bar(
+        branch_avg,
+        x='Branch',
+        y='CGPA',
+        text_auto=True,
+        title='Branch-wise Average CGPA'
+    )
 
-st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, use_container_width=True)
 
-# -----------------------------
-# CHART 4 - ATTENDANCE VS INTERNAL MARKS
-# -----------------------------
-st.subheader("Attendance vs Internal Marks")
+    # Pie Chart
+    fig4 = px.pie(
+        filtered_df,
+        names='Diet_Type',
+        title='Diet Type Distribution'
+    )
 
-fig4 = px.scatter(
-    filtered_df,
-    x='Attendance_Percentage',
-    y='Internal_Marks',
-    color='Residence',
-    title='Attendance Impact on Internal Marks'
-)
+    st.plotly_chart(fig4, use_container_width=True)
 
-st.plotly_chart(fig4, use_container_width=True)
+    # Histogram
+    fig5 = px.histogram(
+        filtered_df,
+        x='Stress_Level_1_to_10',
+        nbins=10,
+        title='Stress Level Distribution'
+    )
 
-# -----------------------------
-# CHART 5 - DIET TYPE DISTRIBUTION
-# -----------------------------
-st.subheader("Diet Type Distribution")
+    st.plotly_chart(fig5, use_container_width=True)
 
-fig5 = px.pie(
-    filtered_df,
-    names='Diet_Type',
-    title='Veg vs Non-Veg Students'
-)
+    # Correlation Heatmap
+    st.subheader("Correlation Heatmap")
 
-st.plotly_chart(fig5, use_container_width=True)
+    numeric_df = filtered_df.select_dtypes(include=['float64', 'int64'])
+    corr = numeric_df.corr()
 
-# -----------------------------
-# CHART 6 - STRESS LEVEL DISTRIBUTION
-# -----------------------------
-st.subheader("Stress Level Distribution")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
 
-fig6 = px.histogram(
-    filtered_df,
-    x='Stress_Level_1_to_10',
-    nbins=10,
-    title='Stress Level Distribution'
-)
+    st.pyplot(fig)
 
-st.plotly_chart(fig6, use_container_width=True)
+# ======================================================
+# DATA ANALYSIS PAGE
+# ======================================================
+elif page == "Data Analysis":
 
-# -----------------------------
-# CORRELATION HEATMAP
-# -----------------------------
-st.subheader("Correlation Heatmap")
+    st.title("📈 Exploratory Data Analysis")
 
-numeric_df = filtered_df.select_dtypes(include=['float64', 'int64'])
+    st.subheader("Dataset Preview")
+    st.dataframe(df)
 
-corr = numeric_df.corr()
+    st.subheader("Statistical Summary")
+    st.write(df.describe())
 
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
+    st.subheader("Missing Values")
+    st.write(df.isnull().sum())
 
-st.pyplot(fig)
+    st.subheader("Data Types")
+    st.write(df.dtypes)
 
-# -----------------------------
-# DATASET PREVIEW
-# -----------------------------
-st.subheader("Dataset Preview")
-st.dataframe(filtered_df)
+# ======================================================
+# MACHINE LEARNING PAGE
+# ======================================================
+elif page == "Machine Learning Prediction":
 
-# -----------------------------
-# KEY INSIGHTS
-# -----------------------------
-st.subheader("Key Insights")
+    st.title("🤖 CGPA Prediction Model")
 
-st.markdown("""
-- Students with higher study hours generally achieve better CGPA.
-- High attendance positively impacts internal marks.
-- Excessive screen time may reduce academic performance.
-- Proper sleep helps in reducing stress levels.
-- Balanced lifestyle habits improve student performance.
-""")
+    features = [
+        'Study_Hours_per_Day',
+        'Sleep_Hours',
+        'Screen_Time_Hours',
+        'Attendance_Percentage',
+        'Stress_Level_1_to_10'
+    ]
 
-# -----------------------------
+    X = df[features]
+    y = df['CGPA']
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+    accuracy = r2_score(y_test, predictions)
+
+    st.success(f"Model Accuracy: {round(accuracy * 100, 2)}%")
+
+    st.subheader("Enter Student Details")
+
+    study = st.slider("Study Hours", 1, 15, 5)
+    sleep = st.slider("Sleep Hours", 1, 12, 7)
+    screen = st.slider("Screen Time", 1, 15, 5)
+    attendance = st.slider("Attendance %", 50, 100, 80)
+    stress = st.slider("Stress Level", 1, 10, 5)
+
+    if st.button("Predict CGPA"):
+
+        input_data = pd.DataFrame([
+            [study, sleep, screen, attendance, stress]
+        ], columns=features)
+
+        predicted_cgpa = model.predict(input_data)[0]
+
+        st.success(f"Predicted CGPA: {round(predicted_cgpa, 2)}")
+
+# ======================================================
+# PDF REPORT GENERATOR
+# ======================================================
+elif page == "Generate Report":
+
+    st.title("📄 Generate Project Report")
+
+    if st.button("Generate PDF Report"):
+
+        pdf = FPDF()
+        pdf.add_page()
+
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(200, 10, "Student Behaviour Analysis Report", ln=True, align='C')
+
+        pdf.ln(10)
+
+        pdf.set_font("Arial", size=12)
+
+        report_text = """
+        This report analyzes student behavioural patterns and their impact on academic performance.
+
+        Key Findings:
+        - Higher study hours improve CGPA.
+        - Good attendance improves internal marks.
+        - Excessive screen time negatively impacts performance.
+        - Proper sleep reduces stress.
+        - Balanced lifestyle improves academic success.
+        """
+
+        pdf.multi_cell(0, 10, report_text)
+
+        pdf.output("student_report.pdf")
+
+        with open("student_report.pdf", "rb") as file:
+            st.download_button(
+                label="Download PDF Report",
+                data=file,
+                file_name="student_report.pdf",
+                mime="application/pdf"
+            )
+
+# ======================================================
+# ABOUT PAGE
+# ======================================================
+elif page == "About Project":
+
+    st.title("ℹ About This Project")
+
+    st.markdown("""
+    ## DADV Mini Project
+
+    ### Topic:
+    Analyzing Behavioural Patterns and Their Impact on Students
+
+    ### Technologies Used:
+    - Python
+    - Streamlit
+    - Pandas
+    - Plotly
+    - Seaborn
+    - Machine Learning
+
+    ### Features:
+    ✅ Interactive Dashboard
+    ✅ Dark Theme UI
+    ✅ Filters & Navigation
+    ✅ Machine Learning Prediction
+    ✅ PDF Report Generation
+    ✅ Interactive Charts
+    ✅ Data Analysis
+
+    ### Developed For:
+    Data Analytics and Data Visualization (DADV)
+    """)
+
+# ======================================================
 # FOOTER
-# -----------------------------
+# ======================================================
 st.markdown("---")
-st.markdown("### DADV Mini Project")
-st.markdown("Created using Python, Streamlit, Plotly, Pandas and Seaborn")
-
-
-# -----------------------------
-# HOW TO RUN THE PROJECT
-# -----------------------------
-'''
-1. Save this file as app.py
-2. Keep dataset file in the same folder
-3. Open terminal
-4. Install required libraries:
-
-pip install streamlit pandas plotly seaborn matplotlib
-
-5. Run the dashboard:
-
-streamlit run app.py
-'''
+st.markdown("### 🚀Student Behaviour Dashboard")
